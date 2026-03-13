@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFS Goal - GK Master Quiz</title>
+    <style>
+        :root { --primary: #0984e3; --success: #27ae60; --error: #d63031; }
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Motivated Background Image: Focused study for success */
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+                        url('https://images.unsplash.com/photo-1434030216411-0b793f4b4173?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .quiz-container {
+            background: rgba(255, 255, 255, 0.98);
+            width: 95%;
+            max-width: 550px;
+            padding: 30px;
+            border-radius: 25px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            text-align: center;
+            border: 4px solid var(--primary);
+        }
+
+        #timer-display { 
+            font-weight: bold; 
+            font-size: 1.5rem; 
+            color: var(--error); 
+            background: #ffeaa7;
+            padding: 10px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        .question { font-size: 1.4rem; font-weight: 700; color: #2d3436; margin-bottom: 25px; }
+
+        .options { display: grid; gap: 15px; }
+
+        .option-btn {
+            padding: 15px;
+            border: 2px solid #dfe6e9;
+            border-radius: 12px;
+            background: #fff;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .option-btn:hover { border-color: var(--primary); background: #f1f2f6; transform: scale(1.02); }
+
+        .correct { background-color: var(--success) !important; color: white; border-color: var(--success); }
+        .wrong { background-color: var(--error) !important; color: white; border-color: var(--error); }
+
+        #next-btn {
+            margin-top: 25px;
+            padding: 15px 40px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            display: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .result-card { display: none; }
+        .result-card h2 { color: var(--primary); font-size: 2.2rem; margin-bottom: 10px; }
+        .score-circle {
+            width: 120px; height: 120px;
+            line-height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6c5ce7, #0984e3);
+            color: white;
+            font-size: 2rem;
+            margin: 20px auto;
+            box-shadow: 0 10px 20px rgba(9, 132, 227, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+<audio id="sound-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+<audio id="sound-wrong" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+<audio id="sound-timer" src="https://assets.mixkit.co/active_storage/sfx/642/642-preview.mp3" loop></audio>
+
+<div class="quiz-container">
+    <div id="quiz-section">
+        <div id="timer-display">⏳ 10s</div>
+        <div id="question-box" class="question">Ready to start?</div>
+        <div id="options-box" class="options"></div>
+        <button id="next-btn" onclick="nextQuestion()">Next Question ➜</button>
+    </div>
+
+    <div id="result-section" class="result-card">
+        <h2>🎉 Mission Accomplished!</h2>
+        <p>Your hard work is paying off.</p>
+        <div class="score-circle" id="final-score">0</div>
+        <p id="feedback">Keep pushing! Your appointment letter is within reach.</p>
+        <button onclick="location.reload()" style="padding:12px 25px; cursor:pointer; border-radius:10px; border:none; background:#2d3436; color:#fff;">Try Again</button>
+    </div>
+</div>
+
+<script>
+    const quizData  = [
+    // --- HISTORY ---
+    { q: "Who was the first Viceroy of India?", a: "Lord Canning", options: ["Lord Dalhousie", "Lord Canning", "Lord Curzon", "Lord Mountbatten"] },
+    { q: "In which year did the Quit India Movement start?", a: "1942", options: ["1920", "1930", "1942", "1947"] },
+    { q: "The Battle of Plassey was fought in which year?", a: "1757", options: ["1526", "1757", "1764", "1857"] },
+    { q: "Who wrote 'Arthashastra'?", a: "Chanakya", options: ["Megasthenes", "Chanakya", "Kalidasa", "Faxian"] },
+    { q: "Which Mughal Emperor was known as 'Zinda Pir'?", a: "Aurangzeb", options: ["Akbar", "Shah Jahan", "Aurangzeb", "Jahangir"] },
+    
+    // --- POLITY (IFS Focus) ---
+    { q: "Which article of the Indian Constitution deals with the 'Right to Equality'?", a: "Article 14", options: ["Article 14", "Article 19", "Article 21", "Article 32"] },
+    { q: "Who is the Chairman of Rajya Sabha?", a: "Vice President of India", options: ["President", "Prime Minister", "Vice President of India", "Speaker"] },
+    { q: "The concept of 'Fundamental Duties' was taken from which country?", a: "USSR", options: ["USA", "UK", "USSR", "Ireland"] },
+    { q: "Who appoints the Chief Justice of India?", a: "President of India", options: ["Prime Minister", "Law Minister", "President of India", "Vice President"] },
+    { q: "Which body is responsible for conducting elections in India?", a: "Election Commission", options: ["Parliament", "Supreme Court", "Election Commission", "Home Ministry"] },
+
+    // --- GEOGRAPHY ---
+    { q: "Which is the longest river in the world?", a: "Nile", options: ["Amazon", "Nile", "Ganges", "Mississippi"] },
+    { q: "Which state in India has the longest coastline?", a: "Gujarat", options: ["Kerala", "Tamil Nadu", "Maharashtra", "Gujarat"] },
+    { q: "Which is the largest planet in our Solar System?", a: "Jupiter", options: ["Earth", "Mars", "Jupiter", "Saturn"] },
+    { q: "Mount Everest is located in which country?", a: "Nepal", options: ["India", "China", "Nepal", "Bhutan"] },
+    { q: "The 'Equator' passes through how many continents?", a: "3", options: ["2", "3", "4", "5"] },
+
+    // --- SCIENCE & TECH ---
+    { q: "What is the chemical symbol for Gold?", a: "Au", options: ["Ag", "Au", "Fe", "Cu"] },
+    { q: "Which gas is most abundant in Earth's atmosphere?", a: "Nitrogen", options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Argon"] },
+    { q: "Who discovered Penicillin?", a: "Alexander Fleming", options: ["Louis Pasteur", "Alexander Fleming", "Newton", "Einstein"] },
+    { q: "Which part of the human brain controls balance?", a: "Cerebellum", options: ["Cerebrum", "Medulla", "Cerebellum", "Thalamus"] },
+    { q: "What is the unit of power?", a: "Watt", options: ["Joule", "Watt", "Newton", "Volt"] },
+
+    // --- INTERNATIONAL RELATIONS (For IFS Aspirants) ---
+    { q: "Where is the headquarters of the United Nations (UN)?", a: "New York", options: ["Geneva", "Paris", "New York", "Vienna"] },
+    { q: "How many permanent members are there in the UN Security Council?", a: "5", options: ["5", "10", "15", "20"] },
+    { q: "Which country is the latest member of the BRICS group?", a: "Egypt", options: ["Argentina", "Egypt", "Japan", "Germany"] },
+    { q: "G7 summit 2024 was held in which country?", a: "Italy", options: ["Japan", "Germany", "Italy", "USA"] },
+    { q: "The 'World Bank' is headquartered in?", a: "Washington D.C.", options: ["London", "New York", "Washington D.C.", "Geneva"] },
+{ q: "Who was the first woman President of India?", a: "Pratibha Patil", options: ["Indira Gandhi", "Pratibha Patil", "Droupadi Murmu", "Sarojini Naidu"] },
+{ q: "Which is the largest coffee-producing state in India?", a: "Karnataka", options: ["Kerala", "Karnataka", "Tamil Nadu", "Assam"] },
+{ q: "Who is known as the 'Grand Old Man of India'?", a: "Dadabhai Naoroji", options: ["Bal Gangadhar Tilak", "Dadabhai Naoroji", "Mahatma Gandhi", "Gopal Krishna Gokhale"] },
+{ q: "Which article of the Constitution allows the President to impose President's Rule?", a: "Article 356", options: ["Article 352", "Article 356", "Article 360", "Article 370"] },
+{ q: "What is the SI unit of electric current?", a: "Ampere", options: ["Volt", "Watt", "Ohm", "Ampere"] },
+{ q: "Which river is known as the 'Dakshina Ganga'?", a: "Godavari", options: ["Krishna", "Cauvery", "Godavari", "Mahanadi"] },
+{ q: "The 'Panchatantra' was written by?", a: "Vishnu Sharma", options: ["Kalidasa", "Vishnu Sharma", "Tulsidas", "Banabhatta"] },
+{ q: "Which is the most populous city in the world?", a: "Tokyo", options: ["Shanghai", "Delhi", "New York", "Tokyo"] },
+{ q: "Who was the first Indian to win an individual Olympic gold medal?", a: "Abhinav Bindra", options: ["Leander Paes", "Rajyavardhan Rathore", "Abhinav Bindra", "Neeraj Chopra"] },
+{ q: "Which planet has the maximum number of moons?", a: "Saturn", options: ["Jupiter", "Saturn", "Uranus", "Neptune"] },
+{ q: "Who built the Sanchi Stupa?", a: "Ashoka", options: ["Chandragupta", "Ashoka", "Kanishka", "Harsha"] },
+{ q: "Which blood group is known as the 'Universal Donor'?", a: "O negative", options: ["AB positive", "O positive", "O negative", "A negative"] },
+{ q: "The headquarters of the World Health Organization (WHO) is in?", a: "Geneva", options: ["New York", "Paris", "Geneva", "Rome"] },
+{ q: "Who discovered the laws of gravity?", a: "Isaac Newton", options: ["Albert Einstein", "Isaac Newton", "Galileo", "Nikola Tesla"] },
+{ q: "Which state in India has the highest literacy rate?", a: "Kerala", options: ["Tamil Nadu", "Mizoram", "Kerala", "Goa"] },
+{ q: "Who was the first Governor-General of independent India?", a: "Lord Mountbatten", options: ["C. Rajagopalachari", "Lord Mountbatten", "Jawaharlal Nehru", "Sardar Patel"] },
+{ q: "The fundamental rights in the Indian Constitution are inspired by which country?", a: "USA", options: ["Canada", "UK", "USA", "France"] },
+{ q: "Which is the largest freshwater lake in India?", a: "Wular Lake", options: ["Chilika Lake", "Wular Lake", "Dal Lake", "Vembanad Lake"] },
+{ q: "Who is the author of 'The Discovery of India'?", a: "Jawaharlal Nehru", options: ["Mahatma Gandhi", "Jawaharlal Nehru", "Rabindranath Tagore", "Subhash Chandra Bose"] },
+{ q: "Which gas is filled in electric bulbs?", a: "Argon", options: ["Oxygen", "Nitrogen", "Argon", "Hydrogen"] },
+{ q: "The boundary line between India and China is called?", a: "McMahon Line", options: ["Radcliffe Line", "McMahon Line", "Durand Line", "Line of Control"] },
+{ q: "Who was the founder of the Indian National Congress?", a: "A.O. Hume", options: ["W.C. Bannerjee", "A.O. Hume", "Dadabhai Naoroji", "Annie Besant"] },
+{ q: "Which city is known as the 'Silicon Valley of India'?", a: "Bengaluru", options: ["Hyderabad", "Pune", "Bengaluru", "Chennai"] },
+{ q: "Who is known as the 'Lady with the Lamp'?", a: "Florence Nightingale", options: ["Mother Teresa", "Sarojini Naidu", "Florence Nightingale", "Joan of Arc"] },
+{ q: "Which gland is known as the 'Master Gland' of the human body?", a: "Pituitary Gland", options: ["Thyroid", "Adrenal", "Pituitary Gland", "Pancreas"] },
+{ q: "In which year did the First World War begin?", a: "1914", options: ["1912", "1914", "1918", "1939"] },
+{ q: "Who was the first Indian woman to climb Mount Everest?", a: "Bachendri Pal", options: ["Santosh Yadav", "Bachendri Pal", "Arunima Sinha", "Premlata Agarwal"] },
+{ q: "The 'Kaziranga National Park' is famous for?", a: "One-horned Rhino", options: ["Tigers", "Elephants", "One-horned Rhino", "Lions"] },
+{ q: "Who wrote the national anthem of Bangladesh?", a: "Rabindranath Tagore", options: ["Kazi Nazrul Islam", "Rabindranath Tagore", "Bankim Chandra", "Humayun Ahmed"] },
+{ q: "Which part of the plant conducts water to the leaves?", a: "Xylem", options: ["Phloem", "Xylem", "Roots", "Stomata"] },
+{ q: "What is the currency of Russia?", a: "Ruble", options: ["Euro", "Ruble", "Dinar", "Pound"] },
+{ q: "The 'Battle of Haldighati' was fought between Akbar and?", a: "Maharana Pratap", options: ["Hemmu", "Rana Sanga", "Maharana Pratap", "Shivaji"] },
+{ q: "Which is the largest bone in the human ear?", a: "Malleus", options: ["Stapes", "Incus", "Malleus", "Femur"] },
+{ q: "Who is the current Secretary-General of the United Nations?", a: "Antonio Guterres", options: ["Ban Ki-moon", "Antonio Guterres", "Kofi Annan", "Donald Trump"] },
+{ q: "Which vitamin is responsible for blood clotting?", a: "Vitamin K", options: ["Vitamin A", "Vitamin C", "Vitamin D", "Vitamin K"] },
+{ q: "The 'Golden Temple' is located in which city?", a: "Amritsar", options: ["Ludhiana", "Chandigarh", "Amritsar", "Patiala"] },
+{ q: "Who was the first Indian to travel in space?", a: "Rakesh Sharma", options: ["Kalpana Chawla", "Sunita Williams", "Rakesh Sharma", "Vikram Sarabhai"] },
+{ q: "Which animal is known as the 'Ship of the Desert'?", a: "Camel", options: ["Camel", "Elephant", "Horse", "Donkey"] },
+{ q: "What is the chemical name for Common Salt?", a: "Sodium Chloride", options: ["Sodium Bicarbonate", "Sodium Chloride", "Potassium Nitrate", "Calcium Carbonate"] },
+{ q: "The 'Gateway of India' is located in?", a: "Mumbai", options: ["Delhi", "Mumbai", "Kolkata", "Chennai"] },
+{ q: "Who gave the slogan 'Do or Die'?", a: "Mahatma Gandhi", options: ["Subhash Chandra Bose", "Mahatma Gandhi", "Bhagat Singh", "Jawaharlal Nehru"] },
+{ q: "Which is the largest gland in the human body?", a: "Liver", options: ["Thyroid", "Liver", "Pancreas", "Pituitary"] },
+{ q: "Who invented the light bulb?", a: "Thomas Edison", options: ["Nikola Tesla", "Thomas Edison", "Alexander Graham Bell", "Albert Einstein"] },
+{ q: "The 'Silent Valley National Park' is located in which state?", a: "Kerala", options: ["Karnataka", "Tamil Nadu", "Kerala", "Assam"] },
+{ q: "Who was the political guru of Mahatma Gandhi?", a: "Gopal Krishna Gokhale", options: ["Dadabhai Naoroji", "Bal Gangadhar Tilak", "Gopal Krishna Gokhale", "Rabindranath Tagore"] },
+{ q: "Which is the smallest state of India by area?", a: "Goa", options: ["Sikkim", "Goa", "Tripura", "Manipur"] },
+{ q: "What is the pH value of pure water?", a: "7", options: ["5", "6", "7", "8"] },
+{ q: "Who wrote 'Jai Hind' for the first time?", a: "Abid Hasan", options: ["Subhash Chandra Bose", "Abid Hasan", "Bhagat Singh", "Sardar Patel"] },
+{ q: "Which instrument is used to measure blood pressure?", a: "Sphygmomanometer", options: ["Stethoscope", "Sphygmomanometer", "Thermometer", "Barometer"] },
+{ q: "What is the capital of Italy?", a: "Rome", options: ["Paris", "Madrid", "Rome", "Venice"] },
+
+
+        // ------
+        { q: "Who was the founder of the Maurya Empire?", a: "Chandragupta Maurya", options: ["Ashoka", "Chandragupta Maurya", "Bindusara", "Harsha"] },
+        { q: "Which planet is known as the Red Planet?", a: "Mars", options: ["Venus", "Mars", "Jupiter", "Saturn"] },
+        // ... (Baaki ellam ivide thudaruka)
+    ];
+
+    let currentIdx = 0;
+    let timer;
+    let timeLeft = 10;
+    let score = 0;
+
+    const sCorrect = document.getElementById('sound-correct');
+    const sWrong = document.getElementById('sound-wrong');
+    const sTimer = document.getElementById('sound-timer');
+
+    function loadQuestion() {
+        clearInterval(timer);
+        timeLeft = 10;
+        document.getElementById('timer-display').innerText = `⏳ ${timeLeft}s`;
+        document.getElementById('next-btn').style.display = 'none';
+        
+        const data = quizData[currentIdx];
+        document.getElementById('question-box').innerText = `${currentIdx + 1}. ${data.q}`;
+        const optionsBox = document.getElementById('options-box');
+        optionsBox.innerHTML = '';
+        
+        data.options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(btn, opt, data.a);
+            optionsBox.appendChild(btn);
+        });
+        
+        sTimer.play(); // Timer sound starts
+        startTimer();
+    }
+
+    function startTimer() {
+        timer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer-display').innerText = `⏳ ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                sTimer.pause();
+                clearInterval(timer);
+                showCorrect();
+                document.getElementById('next-btn').style.display = 'inline-block';
+            }
+        }, 1000);
+    }
+
+    function checkAnswer(btn, selected, correct) {
+        clearInterval(timer);
+        sTimer.pause();
+        sTimer.currentTime = 0;
+        
+        const allBtns = document.querySelectorAll('.option-btn');
+        if (selected === correct) {
+            btn.classList.add('correct');
+            sCorrect.play();
+            score++;
+        } else {
+            btn.classList.add('wrong');
+            sWrong.play();
+            showCorrect();
+        }
+        allBtns.forEach(b => b.disabled = true);
+        document.getElementById('next-btn').style.display = 'inline-block';
+    }
+
+    function showCorrect() {
+        const correct = quizData[currentIdx].a;
+        document.querySelectorAll('.option-btn').forEach(b => {
+            if(b.innerText === correct) b.classList.add('correct');
+        });
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < quizData.length) {
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-section').style.display = 'none';
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('final-score').innerText = `${score}/${quizData.length}`;
+    }
+
+    loadQuestion();
+</script>
+</body>
+</html>
